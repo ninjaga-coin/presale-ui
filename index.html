@@ -126,31 +126,43 @@
         window.open('https://phantom.app/', '_blank');
         return;
       }
+
       try {
-        await provider.connect();
+        if (!provider.isConnected) {
+          await provider.connect();
+        }
+
         const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('mainnet-beta'));
         const fromPubkey = provider.publicKey;
+
+        if (!fromPubkey) {
+          alert('Wallet connection failed. Please try again.');
+          return;
+        }
+
         const inputAmount = parseFloat(document.getElementById('inputAmount').value);
         if (isNaN(inputAmount) || inputAmount <= 0) {
           alert('Enter a valid SOL amount');
           return;
         }
+
         const lamports = inputAmount * solanaWeb3.LAMPORTS_PER_SOL;
         const toPubkey = new solanaWeb3.PublicKey('zKc4TdswECyWKvT9iZ2ZDvEFyBNBFPdpG53nsuYSwYh');
         const transaction = new solanaWeb3.Transaction().add(
           solanaWeb3.SystemProgram.transfer({ fromPubkey, toPubkey, lamports })
         );
         transaction.feePayer = fromPubkey;
-        let { blockhash } = await connection.getRecentBlockhash();
+        const { blockhash } = await connection.getRecentBlockhash();
         transaction.recentBlockhash = blockhash;
+
         const signed = await provider.signTransaction(transaction);
         const signature = await connection.sendRawTransaction(signed.serialize());
         await connection.confirmTransaction(signature);
         alert(`✅ Payment Successful. TX ID: ${signature}`);
         window.open('https://forms.gle/WSSCq5F3GcrRA2H57', '_blank');
       } catch (err) {
-        console.error(err);
-        alert('❌ Payment Failed. Please check your wallet balance and try again.');
+        console.error('Transaction failed:', err);
+        alert('❌ Payment Failed. Please connect your wallet and ensure you have sufficient SOL.');
       }
     }
   </script>
