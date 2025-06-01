@@ -119,7 +119,7 @@
       }
     });
 
-    async function connectAndPay() {
+async function connectAndPay() {
   const provider = window.solana;
 
   if (!provider || !provider.isPhantom) {
@@ -129,12 +129,13 @@
   }
 
   try {
-    // Ensure wallet is connected and authorized
-    const connectionResponse = await provider.connect();
-    const publicKey = connectionResponse?.publicKey?.toString() || provider.publicKey?.toString();
+    if (!provider.isConnected) {
+      await provider.connect();
+    }
 
+    const publicKey = provider.publicKey;
     if (!publicKey) {
-      alert('❌ Wallet connection was not authorized.');
+      alert('❌ Wallet connection failed.');
       return;
     }
 
@@ -146,29 +147,32 @@
 
     const lamports = inputAmount * solanaWeb3.LAMPORTS_PER_SOL;
     const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('mainnet-beta'));
-    const fromPubkey = new solanaWeb3.PublicKey(publicKey);
-    const toPubkey = new solanaWeb3.PublicKey('zKc4TdswECyWKvT9iZ2ZDvEFyBNBFPdpG53nsuYSwYh');
 
     const transaction = new solanaWeb3.Transaction().add(
-      solanaWeb3.SystemProgram.transfer({ fromPubkey, toPubkey, lamports })
+      solanaWeb3.SystemProgram.transfer({
+        fromPubkey: publicKey,
+        toPubkey: new solanaWeb3.PublicKey('zKc4TdswECyWKvT9iZ2ZDvEFyBNBFPdpG53nsuYSwYh'),
+        lamports,
+      })
     );
 
-    transaction.feePayer = fromPubkey;
-    const { blockhash } = await connection.getRecentBlockhash();
+    transaction.feePayer = publicKey;
+    const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
 
-    const signed = await provider.signTransaction(transaction);
-    const signature = await connection.sendRawTransaction(signed.serialize());
+    // ✅ Sign and send in one go
+    const signature = await provider.signAndSendTransaction(transaction);
     await connection.confirmTransaction(signature);
 
     alert(`✅ Payment Successful. TX ID: ${signature}`);
     window.open('https://forms.gle/WSSCq5F3GcrRA2H57', '_blank');
 
   } catch (err) {
-    console.error('Transaction Error:', err);
-    alert('❌ Payment Failed. Please make sure your wallet is connected and funded.');
+    console.error('Transaction error:', err);
+    alert('❌ Payment Failed. Please ensure your wallet is connected and has enough SOL.');
   }
 }
+
 
   </script>
 </body>
