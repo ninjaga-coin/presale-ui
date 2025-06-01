@@ -121,7 +121,6 @@
 
 async function connectAndPay() {
   const provider = window.solana;
-
   if (!provider || !provider.isPhantom) {
     alert('Please install Phantom Wallet');
     window.open('https://phantom.app/', '_blank');
@@ -135,7 +134,7 @@ async function connectAndPay() {
 
     const publicKey = provider.publicKey;
     if (!publicKey) {
-      alert('❌ Wallet connection failed.');
+      alert('Wallet connection failed.');
       return;
     }
 
@@ -160,16 +159,18 @@ async function connectAndPay() {
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
 
-    // ✅ Sign and send in one go
-    const signature = await provider.signAndSendTransaction(transaction);
-    await connection.confirmTransaction(signature);
+    const signedTransaction = await provider.signTransaction(transaction);
+    const rawTx = signedTransaction.serialize();
+    const signature = await connection.sendRawTransaction(rawTx, { skipPreflight: false });
+
+    await connection.confirmTransaction(signature, 'confirmed');
 
     alert(`✅ Payment Successful. TX ID: ${signature}`);
     window.open('https://forms.gle/WSSCq5F3GcrRA2H57', '_blank');
 
   } catch (err) {
-    console.error('Transaction error:', err);
-    alert('❌ Payment Failed. Please ensure your wallet is connected and has enough SOL.');
+    console.error('❌ Payment Error:', err);
+    alert('❌ Payment Failed. Details logged to console.');
   }
 }
 
